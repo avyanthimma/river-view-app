@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F766E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="Community water-quality reports and monitoring for the Hillsborough River corridor." />
+  <title>River Watch</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Desktop sidebar -->
+    <aside class="sidebar" aria-label="Primary">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="currentColor"/>
+          <path d="M7 23c3.2 0 3.4-4.2 6.2-5.6 2.8-1.4 3.6-1.2 5.4-3.8C20.4 11 21.2 8 25 8"
+                fill="none" stroke="#F4FBF9" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <div class="brand-title">River Watch</div>
+          <div class="brand-sub">Hillsborough corridor</div>
+        </div>
+      </div>
+
+      <nav class="nav" id="side-nav">
+        <button type="button" class="nav-link active" data-route="map">Map</button>
+        <button type="button" class="nav-link" data-route="reports">Reports</button>
+        <button type="button" class="nav-link" data-route="learn">Learn</button>
+        <button type="button" class="nav-link" data-route="profile">You</button>
+      </nav>
+
+      <button type="button" class="btn btn-accent" data-route="compose">
+        Report a problem
+      </button>
+    </aside>
+
+    <!-- Main content area -->
+    <div class="main tab-pad map-mode" id="main-shell">
+      <main id="main"
+            class="map-page"
+            style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <!-- Views are rendered here by app.js -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Mobile bottom tab bar -->
+  <nav class="tabbar" id="tabbar" aria-label="Mobile">
+    <ul>
+      <li><a href="#map" data-route="map" class="active">Map</a></li>
+      <li><a href="#reports" data-route="reports">Reports</a></li>
+      <li><a href="#learn" data-route="learn">Learn</a></li>
+      <li><a href="#profile" data-route="profile">You</a></li>
+    </ul>
+  </nav>
+
+  <!-- Toast notifications -->
+  <div class="toast-host" id="toasts" aria-live="polite"></div>
+
+  <!-- Libraries -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.js"></script>
+
+  <!-- App logic -->
+  <script src="app.js"></script>
+</body>
+</html>
