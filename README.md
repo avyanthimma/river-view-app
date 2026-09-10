@@ -1,4 +1,5 @@
-🌊 River Watch
+🌊River Watch App
+
 River Watch is a lightweight, mobile-first web application for community water-quality monitoring and environmental incident reporting along the Hillsborough River corridor. It empowers local residents to log field data (such as pH, turbidity, and dissolved oxygen) and submit geotagged reports on pollution or river hazards.
 
 
