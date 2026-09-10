@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F766E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="Community water-quality reports and monitoring for the Hillsborough River corridor." />
+  <title>River Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    :root {
+      --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Fraunces", ui-serif, Georgia, serif;
+      --canvas: #f3f8f6; --surface: #e6efec; --card: #ffffff;
+      --ink: #14312e; --ink-muted: #5c6f6c; --ink-subtle: #7a8b88;
+      --primary: #0f766e; --primary-fg: #f4fbf9;
+      --accent: #0e7490; --accent-fg: #f0fdfa; --border: #d5e3de; --ring: #0f766e;
+      --good: #0f766e; --moderate: #c2410c; --poor: #b42318;
+      --cat-trash: #b45309; --cat-algae: #4d7c0f; --cat-oil: #3f3f46; --cat-fish: #3f4a6b;
+      --cat-erosion: #9a3412; --cat-discolor: #9f1239; --cat-odor: #0e7490; --cat-other: #64748b;
+      --on-cat: #f7faf9;
+      --shadow: 0 0 0 1px rgba(20,49,46,.06), 0 1px 2px -1px rgba(20,49,46,.06), 0 2px 4px rgba(20,49,46,.04);
+      --shadow-lift: 0 0 0 1px rgba(20,49,46,.06), 0 8px 24px -8px rgba(20,49,46,.18);
+      --tab-h: 3.5rem; --ease: cubic-bezier(.22,1,.36,1);
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{-webkit-font-smoothing:antialiased}
+    html,body{margin:0;width:100%;height:100%;min-height:100dvh;min-height:100vh;background:var(--canvas);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.45;overflow-x:hidden}
+    button,[role=button]{cursor:pointer;font-family:inherit}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    img{max-width:100%;display:block}
+    a{color:inherit;text-decoration:none}
+    h1,h2,h3{text-wrap:balance;font-family:var(--font-display);margin:0}
+    p{text-wrap:pretty;margin:0}
+    input,textarea,select{font:inherit;color:var(--ink);background:var(--card);border:none;box-shadow:var(--shadow);border-radius:10px;padding:.7rem .85rem;width:100%}
+    input:focus,textarea:focus,select:focus{outline:2px solid var(--ring);outline-offset:1px}
+    textarea{min-height:5.5rem;resize:vertical}
+    label{display:block;font-size:.875rem;font-weight:600;margin:0 0 .4rem}
+    .app{display:flex;min-height:100dvh;min-height:100vh;width:100%;max-width:none;margin:0}
+    .sidebar{display:none;width:14rem;flex-shrink:0;flex-direction:column;border-right:1px solid var(--border);background:var(--card);padding:1.25rem .75rem;position:sticky;top:0;height:100dvh}
+    .brand{display:flex;align-items:center;gap:.65rem;padding:0 .5rem 1.5rem}
+    .brand-mark{width:2rem;height:2rem;border-radius:.5rem;background:var(--primary);flex-shrink:0}
+    .brand-title{font-family:var(--font-display);font-weight:600;font-size:1rem;line-height:1.1}
+    .brand-sub{font-size:.6875rem;color:var(--ink-subtle);margin-top:.2rem}
+    .nav{display:flex;flex-direction:column;gap:.25rem;flex:1}
+    .nav a,.nav button.nav-link{display:flex;align-items:center;gap:.75rem;height:2.75rem;padding:0 .75rem;border-radius:.75rem;border:none;background:transparent;font-size:.875rem;font-weight:500;color:var(--ink-muted);text-align:left;width:100%}
+    .nav a:hover,.nav button.nav-link:hover{background:var(--surface);color:var(--ink)}
+    .nav a.active,.nav button.nav-link.active{background:var(--surface);color:var(--primary)}
+    .nav svg{width:1.125rem;height:1.125rem;flex-shrink:0}
+    .sidebar .btn-accent{margin-top:1rem;width:100%}
+    .main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:100dvh}
+    .main.map-mode{height:100dvh;height:100vh;overflow:hidden;width:100%}
+    .main.tab-pad{padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}
+    .tabbar{position:fixed;inset-inline:0;bottom:0;z-index:40;background:color-mix(in oklab,var(--card) 95%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
+    .tabbar ul{list-style:none;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(4,1fr);height:var(--tab-h);max-width:32rem}
+    .tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;font-size:.6875rem;font-weight:500;color:var(--ink-subtle);height:100%}
+    .tabbar a.active{color:var(--primary)}
+    .tabbar svg{width:1.25rem;height:1.25rem}
+    @media(min-width:768px){.sidebar{display:flex}.tabbar{display:none}.main.tab-pad{padding-bottom:0}}
+    .page-header{display:flex;align-items:center;gap:.75rem;background:var(--primary);color:var(--primary-fg);padding:.75rem 1rem;padding-top:max(.75rem,env(safe-area-inset-top,0px))}
+    .page-header h1{font-size:1.25rem;font-weight:600;letter-spacing:-.02em}
+    .page-header .sub{font-size:.875rem;opacity:.85;margin-top:.15rem;font-family:var(--font-sans)}
+    .icon-btn{width:2.75rem;height:2.75rem;border-radius:999px;border:none;background:transparent;color:inherit;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .icon-btn:hover{background:rgba(255,255,255,.1)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border:none;font-weight:600;font-size:.875rem;border-radius:.65rem;padding:0 1rem;height:2.75rem;transition:transform 150ms ease-out;box-shadow:var(--shadow)}
+    .btn:active:not(:disabled){transform:scale(.96)}
+    .btn-primary{background:var(--primary);color:var(--primary-fg)}
+    .btn-accent{background:var(--accent);color:var(--accent-fg)}
+    .btn-outline{background:var(--card);color:var(--ink)}
+    .btn-mute{background:var(--surface);color:var(--ink);box-shadow:none}
+    .btn-lg{height:3rem;border-radius:.75rem;font-size:1rem}
+    .btn-sm{height:2.25rem;font-size:.8125rem;padding:0 .75rem;border-radius:.5rem}
+    .btn-chip{height:2.25rem;border-radius:999px;padding:0 .9rem}
+    .btn-icon{width:2.75rem;padding:0;border-radius:999px}
+    .btn-block{width:100%}
+    .card{background:var(--card);border-radius:1rem;padding:1rem;box-shadow:var(--shadow)}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:.15rem .5rem;font-size:.6875rem;font-weight:700}
+    .badge-good{background:var(--good);color:var(--primary-fg)}
+    .badge-moderate{background:var(--moderate);color:var(--on-cat)}
+    .badge-poor{background:var(--poor);color:var(--on-cat)}
+    .badge-muted{background:var(--surface);color:var(--ink-muted)}
+    .chip{display:inline-flex;align-items:center;border-radius:999px;padding:.15rem .5rem;font-size:.6875rem;font-weight:700;color:var(--on-cat)}
+    .chip-trash{background:var(--cat-trash)}.chip-algae_bloom{background:var(--cat-algae)}
+    .chip-oil_spill{background:var(--cat-oil)}.chip-dead_fish{background:var(--cat-fish)}
+    .chip-erosion{background:var(--cat-erosion)}.chip-discoloration{background:var(--cat-discolor)}
+    .chip-odor{background:var(--cat-odor)}.chip-other{background:var(--cat-other)}
+    .content{max-width:36rem;margin:0 auto;width:100%;padding:1rem;padding-bottom:2.5rem}
+    .stack{display:flex;flex-direction:column;gap:.65rem}
+    .stack-lg{display:flex;flex-direction:column;gap:1rem}
+    .row{display:flex;align-items:center;gap:.75rem}
+    .grow{flex:1;min-width:0}
+    .muted{color:var(--ink-muted)}.subtle{color:var(--ink-subtle)}
+    .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .tabular{font-variant-numeric:tabular-nums}
+    .map-page{position:relative;flex:1;min-height:0;height:100%;width:100%}
+    #map{width:100%;height:100%;min-height:100%;background:var(--surface);position:absolute;inset:0}
+    .map-overlay-top{position:absolute;inset-inline:0;top:0;z-index:20;pointer-events:none;background:linear-gradient(to bottom,color-mix(in oklab,var(--primary) 95%,transparent),color-mix(in oklab,var(--primary) 70%,transparent),transparent);padding-bottom:2rem;padding-top:max(.5rem,env(safe-area-inset-top,0px))}
+    .map-overlay-top>*{pointer-events:auto}
+    .map-title-row{display:flex;align-items:center;gap:.75rem;padding:0 1rem;color:var(--primary-fg)}
+    .map-title-row h1{font-size:1.25rem;font-weight:600}
+    .map-title-row p{font-size:.875rem;opacity:.85;font-family:var(--font-sans)}
+    .station-chips{display:flex;gap:.5rem;overflow-x:auto;padding:.75rem 1rem .25rem;scrollbar-width:none}
+    .station-chips::-webkit-scrollbar{display:none}
+    .station-chip{flex-shrink:0;display:flex;align-items:center;gap:.5rem;background:color-mix(in oklab,var(--card) 95%,transparent);backdrop-filter:blur(8px);border:none;border-radius:999px;padding:.5rem .75rem;box-shadow:var(--shadow);font-size:.75rem;font-weight:500;color:var(--ink)}
+    .dot{width:.5rem;height:.5rem;border-radius:999px;flex-shrink:0}
+    .dot-good{background:var(--good)}.dot-moderate{background:var(--moderate)}.dot-poor{background:var(--poor)}
+    .map-overlay-bottom{position:absolute;left:1rem;right:1rem;bottom:1.75rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:.75rem}
+    @media(min-width:768px){.map-overlay-bottom{bottom:1.5rem}}
+    .map-tools{display:flex;width:100%;align-items:flex-end;justify-content:space-between;gap:.75rem}
+    .legend{display:none;align-items:center;gap:.75rem;background:color-mix(in oklab,var(--card) 95%,transparent);border-radius:999px;padding:.35rem .75rem;font-size:.6875rem;color:var(--ink-muted);box-shadow:var(--shadow)}
+    @media(min-width:640px){.legend{display:flex}}
+    .pin-station{display:inline-block;width:.65rem;height:.65rem;background:var(--primary);border:1.5px solid #fff;border-radius:2px 2px 2px 0;transform:rotate(-45deg)}
+    .pin-report{display:inline-block;width:.65rem;height:.65rem;border-radius:999px;background:var(--cat-trash);border:1.5px solid #fff}
+    .rw-pin{background:transparent!important;border:none!important}
+    .rw-pin-station{display:block;width:18px;height:18px;border-radius:4px 4px 4px 0;transform:rotate(-45deg);border:2px solid #fff;background:var(--primary);box-shadow:0 1px 4px rgba(20,49,46,.35)}
+    .rw-pin-dot{display:block;width:16px;height:16px;border-radius:999px;border:2px solid #fff;box-shadow:0 1px 4px rgba(20,49,46,.35)}
+    .leaflet-container{font-family:var(--font-sans);background:var(--surface)}
+    .leaflet-control-attribution{font-size:10px!important;background:color-mix(in oklab,white 86%,transparent)!important;color:var(--ink-subtle)!important}
+    .rw-map-full .leaflet-top.leaflet-right{top:8.75rem}
+    .filters{display:flex;gap:.5rem;overflow-x:auto;padding:.75rem 1rem;scrollbar-width:none}
+    .filters::-webkit-scrollbar{display:none}
+    .filter-btn{flex-shrink:0;height:2.25rem;border-radius:999px;border:none;padding:0 .9rem;font-size:.875rem;font-weight:500;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+    .filter-btn.active{background:var(--primary);color:var(--primary-fg)}
+    .report-card{display:flex;align-items:center;gap:.75rem;background:var(--card);border-radius:1rem;padding:.75rem;box-shadow:var(--shadow)}
+    .report-thumb{width:4rem;height:4rem;border-radius:.75rem;object-fit:cover;flex-shrink:0;background:var(--surface)}
+    .report-thumb.placeholder{display:flex;align-items:center;justify-content:center;color:var(--primary)}
+    .upvote-col{display:flex;flex-direction:column;align-items:center;color:var(--primary);font-size:.75rem;font-weight:700;padding:0 .25rem}
+    .fab{position:fixed;right:1.25rem;bottom:6rem;z-index:30;width:3.4rem;height:3.4rem;border-radius:999px;border:none;background:var(--accent);color:var(--accent-fg);box-shadow:var(--shadow-lift);display:flex;align-items:center;justify-content:center}
+    @media(min-width:768px){.fab{bottom:1.5rem}}
+    .hero-img{width:100%;height:14rem;object-fit:cover;border-radius:1rem;background:var(--surface)}
+    .hero-placeholder{height:11rem;display:flex;align-items:center;justify-content:center;border-radius:1rem;background:var(--card);box-shadow:var(--shadow);color:var(--ink-subtle)}
+    .param-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.75rem 0;border-top:1px solid var(--border)}
+    .param-row:first-of-type{border-top:none;padding-top:0}
+    .meter{position:relative;height:.375rem;border-radius:999px;background:var(--surface);margin-top:.5rem}
+    .meter-good{position:absolute;inset-block:0;border-radius:999px;background:color-mix(in oklab,var(--good) 25%,transparent)}
+    .meter-knob{position:absolute;top:50%;width:.625rem;height:.625rem;border-radius:999px;transform:translate(-50%,-50%);box-shadow:var(--shadow)}
+    .article-card{display:flex;align-items:center;gap:.75rem;background:var(--card);border-radius:1rem;padding:.9rem;box-shadow:var(--shadow)}
+    .article-icon{width:2.75rem;height:2.75rem;border-radius:999px;background:var(--surface);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .article-body h3{font-family:var(--font-display);font-size:1.15rem;font-weight:600;margin:1rem 0 .5rem}
+    .article-body p{color:var(--ink-muted);font-size:.95rem;line-height:1.6;margin-bottom:.75rem}
+    .article-body ul{margin:0 0 .75rem;padding:0;list-style:none}
+    .article-body li{position:relative;padding-left:1rem;color:var(--ink-muted);font-size:.95rem;line-height:1.55;margin-bottom:.4rem}
+    .article-body li::before{content:"";position:absolute;left:0;top:.55em;width:.35rem;height:.35rem;border-radius:999px;background:var(--primary)}
+    .callout{background:var(--surface);border-radius:.75rem;padding:.85rem 1rem;font-size:.875rem;line-height:1.55;color:var(--ink);margin:.5rem 0 1rem}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+    .stat{text-align:center;background:var(--card);border-radius:1rem;padding:1rem;box-shadow:var(--shadow)}
+    .stat strong{display:block;font-family:var(--font-display);font-size:1.85rem;font-weight:600;color:var(--primary)}
+    .stat span{font-size:.75rem;color:var(--ink-subtle)}
+    .contrib{display:flex;align-items:center;gap:.75rem;background:var(--card);border-radius:.75rem;padding:.75rem;box-shadow:var(--shadow)}
+    .category-grid{display:flex;flex-wrap:wrap;gap:.5rem}
+    .cat-select{display:inline-flex;align-items:center;height:2.25rem;border-radius:999px;border:none;padding:0 .75rem;font-size:.8125rem;font-weight:500;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+    .cat-select.active{color:var(--on-cat)}
+    .mini-map{height:12rem;border-radius:1rem;overflow:hidden;box-shadow:var(--shadow);margin-bottom:.75rem}
+    .mini-map .leaflet-container{height:100%;width:100%}
+    .empty{text-align:center;padding:3rem 1.5rem;color:var(--ink-muted);font-size:.875rem}
+    .status-bar{font-size:.75rem;color:var(--ink-subtle);padding:.5rem 1rem;display:flex;align-items:center;gap:.4rem}
+    .status-dot{width:.45rem;height:.45rem;border-radius:999px;background:var(--good)}
+    .status-dot.warn{background:var(--moderate)}.status-dot.err{background:var(--poor)}
+    .toast-host{position:fixed;top:max(1rem,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+    .toast{background:var(--ink);color:var(--primary-fg);padding:.65rem 1rem;border-radius:.65rem;font-size:.875rem;font-weight:500;box-shadow:var(--shadow-lift);animation:toast-in 250ms var(--ease)}
+    @keyframes toast-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    .hidden{display:none!important}
+    .loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--ink-muted);font-size:.875rem}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M7 23c3.2 0 3.4-4.2 6.2-5.6 2.8-1.4 3.6-1.2 5.4-3.8C20.4 11 21.2 8 25 8" fill="none" stroke="#F4FBF9" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <div><div class="brand-title">River Watch</div><div class="brand-sub">Hillsborough corridor</div></div>
+      </div>
+      <nav class="nav" id="side-nav">
+        <button type="button" class="nav-link active" data-route="map">Map</button>
+        <button type="button" class="nav-link" data-route="reports">Reports</button>
+        <button type="button" class="nav-link" data-route="learn">Learn</button>
+        <button type="button" class="nav-link" data-route="profile">You</button>
+      </nav>
+      <button type="button" class="btn btn-accent" data-route="compose">Report a problem</button>
+    </aside>
+    <div class="main tab-pad map-mode" id="main-shell">
+      <main id="main" class="map-page" style="flex:1;min-height:0;display:flex;flex-direction:column"></main>
+    </div>
+  </div>
+  <nav class="tabbar" id="tabbar" aria-label="Mobile">
+    <ul>
+      <li><a href="#map" data-route="map" class="active">Map</a></li>
+      <li><a href="#reports" data-route="reports">Reports</a></li>
+      <li><a href="#learn" data-route="learn">Learn</a></li>
+      <li><a href="#profile" data-route="profile">You</a></li>
+    </ul>
+  </nav>
+  <div class="toast-host" id="toasts" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.js"></script>
+  <script>
+(function () {
+  "use strict";
+
+  /* ═══════════════════════════════════════════════════
+     SUPABASE — paste your project values here
+     Dashboard → Project Settings → API
+     (anon key is public by design when RLS is on)
+     Then run supabase-schema.sql in the SQL Editor
+     ═══════════════════════════════════════════════════ */
+  const SUPABASE_URL = "https://acfeicafdgduygzhszwq.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZmVpY2FmZGdkdXlnemhzendxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NjI4MDcsImV4cCI6MjEwNDAzODgwN30.Ajs7IVId3n1DhpECgxiOoXdvxGA7BXTCZ0db0NL_uHM";
+
+  const url = String(SUPABASE_URL || "").trim().replace(/\/$/, "").replace(/\/rest\/v1$/i, "");
+  const key = String(SUPABASE_ANON_KEY || "").trim();
+  const createClientFn =
+    (typeof supabase !== "undefined" && supabase.createClient) ||
+    (typeof window !== "undefined" && window.supabase && window.supabase.createClient) ||
+    null;
+  const configured =
+    !!createClientFn &&
+    url.startsWith("https://") &&
+    url.includes(".supabase.co") &&
+    !url.includes("YOUR_PROJECT") &&
+    key.length > 20 &&
+    !key.includes("YOUR_SUPABASE");
+  let sb = null;
+  let configError = null;
+  if (!createClientFn) {
+    configError = "Supabase library failed to load (check network / ad blockers)";
+  } else if (!configured) {
+    configError = "Credentials still look like placeholders — paste Project URL + anon key";
+  } else {
+    try {
+      sb = createClientFn(url, key);
+    } catch (e) {
+      configError = "Invalid Supabase client config: " + (e && e.message ? e.message : e);
+    }
+  }
+
+  const CATEGORIES = [
+    { id: "trash", label: "Trash", pin: "#B45309" },
+    { id: "algae_bloom", label: "Algae bloom", pin: "#4D7C0F" },
+    { id: "oil_spill", label: "Oil spill", pin: "#3F3F46" },
+    { id: "dead_fish", label: "Dead fish", pin: "#3F4A6B" },
+    { id: "erosion", label: "Erosion", pin: "#9A3412" },
+    { id: "discoloration", label: "Discoloration", pin: "#9F1239" },
+    { id: "odor", label: "Odor", pin: "#0E7490" },
+    { id: "other", label: "Other", pin: "#64748B" },
+  ];
+  const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+
+  const STATIONS = [
+    { id: "st1", name: "Rowlett Park", source: "EPC Hillsborough", lat: 28.0128, lng: -82.4232, ph: 7.2, turbidity: 4.5, temp: 24.1, do: 6.8, updated: "2026-08-28" },
+    { id: "st2", name: "Lettuce Lake Park", source: "USGS", lat: 28.0611, lng: -82.3559, ph: 7.6, turbidity: 8.2, temp: 25.3, do: 6.1, updated: "2026-08-30" },
+    { id: "st3", name: "Sulphur Springs", source: "Water Atlas", lat: 28.0175, lng: -82.4548, ph: 7.0, turbidity: 15.6, temp: 26.0, do: 4.9, updated: "2026-08-26" },
+    { id: "st4", name: "Downtown Riverwalk", source: "FDEP", lat: 27.9481, lng: -82.4593, ph: 7.9, turbidity: 22.1, temp: 27.2, do: 5.2, updated: "2026-08-29" },
+    { id: "st5", name: "Temple Terrace Bridge", source: "EPC Hillsborough", lat: 28.0353, lng: -82.3903, ph: 6.7, turbidity: 30.4, temp: 25.9, do: 3.8, updated: "2026-08-27" },
+  ];
+  const STATION = Object.fromEntries(STATIONS.map((s) => [s.id, s]));
+  const MAP_CENTER = [27.9906, -82.4227];
+
+  const ARTICLES = [
+    { id: "a1", title: "Understanding pH in river water", category: "Water quality", dek: "How acidic or basic the Hillsborough River is — and why fish care.",
+      blocks: [
+        { t: "h", text: "What pH measures" },
+        { t: "p", text: "pH is a 0–14 scale of how acidic or basic water is. Most healthy freshwater rivers sit between 6.5 and 8.5." },
+        { t: "ul", items: ["Below 6.5: too acidic.", "6.5–8.5: healthy range.", "Above 8.5: often algae or industrial discharge."] },
+        { t: "callout", text: "Watch trends after storms before assuming a lasting problem." },
+      ]},
+    { id: "a2", title: "Turbidity: why cloudy water matters", category: "How to interpret", dek: "Clarity is a simple field clue for sediment, algae, and storm runoff.",
+      blocks: [
+        { t: "h", text: "Reading NTU values" },
+        { t: "p", text: "Turbidity measures particles suspended in the water. After storms the Hillsborough often turns the color of tea with milk." },
+        { t: "ul", items: ["0–10 NTU: good.", "10–25 NTU: moderate after rain.", "25+ NTU: poor — erosion or bloom."] },
+      ]},
+    { id: "a3", title: "Dissolved oxygen and fish health", category: "Water quality", dek: "Fish breathe oxygen dissolved in water.",
+      blocks: [
+        { t: "ul", items: ["6+ mg/L: good.", "4–6 mg/L: moderate stress.", "Below 4 mg/L: fish kills become likely."] },
+      ]},
+    { id: "a4", title: "The Hillsborough River: a conservation timeline", category: "River health", dek: "Pressure, restoration, and community reports.",
+      blocks: [
+        { t: "p", text: "Decades of industrial and urban pressure have been partly offset by wetlands, the Riverwalk, and tighter stormwater rules." },
+        { t: "callout", text: "Official stations are sparse. A photo and pin between them is often the first signal agencies get." },
+      ]},
+    { id: "a5", title: "How to use a portable water sensor kit", category: "Sensor use", dek: "A field routine that keeps readings comparable.",
+      blocks: [
+        { t: "ul", items: ["Rinse the probe before each dip.", "Submerge at a consistent depth.", "Wait for a stable reading.", "Always record a location."] },
+      ]},
+    { id: "a6", title: "Spotting an algae bloom", category: "River health", dek: "Color, scum, and smell.",
+      blocks: [
+        { t: "p", text: "Blooms show as green or blue-green surface film, sometimes with a grassy odor." },
+        { t: "callout", text: "Report with a photo. Keep pets and kids out of discolored water until checked." },
+      ]},
+  ];
+
+  const SEED_REPORTS = [
+    { id: "r1", title: "Trash snagged at the Rowlett boat ramp", description: "Plastic bottles and bags along the cypress edge.", category: "trash", lat: 28.0124, lng: -82.4228, photoUrl: null, status: "pending", upvotes: 12, createdAt: "2026-09-02T13:10:00.000-04:00" },
+    { id: "r2", title: "Green surface scum at Sulphur Springs", description: "Pea-green film downstream of the springs.", category: "algae_bloom", lat: 28.0171, lng: -82.4542, photoUrl: null, status: "reviewed", upvotes: 21, createdAt: "2026-09-01T09:40:00.000-04:00" },
+    { id: "r3", title: "Rainbow sheen along the Riverwalk seawall", description: "Iridescent film about 8 feet across.", category: "oil_spill", lat: 27.9486, lng: -82.459, photoUrl: null, status: "pending", upvotes: 9, createdAt: "2026-08-31T18:05:00.000-04:00" },
+    { id: "r4", title: "Chocolate-brown water after the storm", description: "Opaque water after overnight rain.", category: "discoloration", lat: 27.9498, lng: -82.4584, photoUrl: null, status: "pending", upvotes: 6, createdAt: "2026-08-30T08:20:00.000-04:00" },
+    { id: "r5", title: "Bank sloughing at Temple Terrace", description: "Clay bank collapsed overnight.", category: "erosion", lat: 28.035, lng: -82.3908, photoUrl: null, status: "reviewed", upvotes: 14, createdAt: "2026-08-29T16:45:00.000-04:00" },
+  ];
+  const SEED_READINGS = [
+    { id: "s1", stationName: "Rowlett Park dock", lat: 28.0129, lng: -82.423, ph: 7.1, turbidity: 5.2, temp: 24.4, do: 6.6, notes: "Clear, slight tannic color.", photoUrl: null, createdAt: "2026-08-31T10:15:00.000-04:00" },
+  ];
+
+  const DEVICE_KEY = "rw-device-id";
+  function getDeviceId() {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = "d_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  }
+  const deviceId = getDeviceId();
+  const MINE_KEY = "rw-mine-ids";
+  function getMineIds() {
+    try { return JSON.parse(localStorage.getItem(MINE_KEY) || "[]"); } catch (_) { return []; }
+  }
+  function markMine(id) {
+    const ids = getMineIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      localStorage.setItem(MINE_KEY, JSON.stringify(ids));
+    }
+  }
+
+  let state = {
+    reports: [],
+    readings: [],
+    upvotedIds: [],
+    connection: sb ? "loading" : "offline",
+    errorDetail: configError || null,
+  };
+
+  function mapReportRow(row) {
+    return {
+      id: row.id, title: row.title, description: row.description || "",
+      category: row.category, lat: row.lat, lng: row.lng,
+      photoUrl: row.photo_url || null, status: row.status || "pending",
+      upvotes: row.upvotes || 0, createdAt: row.created_at,
+    };
+  }
+  function mapReadingRow(row) {
+    return {
+      id: row.id, stationName: row.station_name, lat: row.lat, lng: row.lng,
+      ph: row.ph, turbidity: row.turbidity, temp: row.temp, do: row.dissolved_oxygen,
+      notes: row.notes || "", photoUrl: row.photo_url || null, createdAt: row.created_at,
+    };
+  }
+
+  function errMessage(err) {
+    if (!err) return "Unknown error";
+    if (typeof err === "string") return err;
+    return err.message || err.error_description || err.details || err.hint || JSON.stringify(err);
+  }
+
+  async function loadFromSupabase() {
+    if (!sb) {
+      state.reports = SEED_REPORTS.slice();
+      state.readings = SEED_READINGS.slice();
+      state.connection = "offline";
+      state.errorDetail = configError || "Supabase not configured";
+      return;
+    }
+    try {
+      const [repRes, readRes, upRes] = await Promise.all([
+        sb.from("reports").select("*").order("created_at", { ascending: false }),
+        sb.from("sensor_readings").select("*").order("created_at", { ascending: false }),
+        sb.from("report_upvotes").select("report_id").eq("device_id", deviceId),
+      ]);
+      if (repRes.error) throw repRes.error;
+      if (readRes.error) throw readRes.error;
+      if (upRes.error) {
+        console.warn("report_upvotes:", upRes.error);
+        state.upvotedIds = [];
+      } else {
+        state.upvotedIds = (upRes.data || []).map((u) => u.report_id);
+      }
+      state.reports = (repRes.data || []).map(mapReportRow);
+      state.readings = (readRes.data || []).map(mapReadingRow);
+      state.connection = "live";
+      state.errorDetail = null;
+    } catch (err) {
+      console.error("Supabase load failed", err);
+      state.reports = SEED_REPORTS.slice();
+      state.readings = SEED_READINGS.slice();
+      state.connection = "error";
+      state.errorDetail = errMessage(err);
+      toast("Supabase error: " + state.errorDetail);
+    }
+  }
+
+  async function insertReport(report) {
+    if (!sb) {
+      state.reports.unshift(report);
+      markMine(report.id);
+      return report;
+    }
+    const { data, error } = await sb.from("reports").insert({
+      id: report.id, title: report.title, description: report.description,
+      category: report.category, lat: report.lat, lng: report.lng,
+      photo_url: report.photoUrl, status: report.status, upvotes: 0, created_at: report.createdAt,
+    }).select().single();
+    if (error) throw error;
+    const mapped = mapReportRow(data);
+    state.reports.unshift(mapped);
+    markMine(mapped.id);
+    return mapped;
+  }
+
+  async function upvoteReport(id) {
+    if (state.upvotedIds.includes(id)) return;
+    const report = state.reports.find((r) => r.id === id);
+    if (!report) return;
+    if (!sb) {
+      report.upvotes += 1;
+      state.upvotedIds.push(id);
+      return;
+    }
+    const { error: upErr } = await sb.from("report_upvotes").insert({ report_id: id, device_id: deviceId });
+    if (upErr && upErr.code !== "23505") throw upErr;
+    if (!upErr) {
+      await sb.from("reports").update({ upvotes: report.upvotes + 1 }).eq("id", id);
+      report.upvotes += 1;
+      state.upvotedIds.push(id);
+    }
+  }
+
+  async function insertReading(reading) {
+    if (!sb) {
+      state.readings.unshift(reading);
+      markMine(reading.id);
+      return reading;
+    }
+    const { data, error } = await sb.from("sensor_readings").insert({
+      id: reading.id, station_name: reading.stationName, lat: reading.lat, lng: reading.lng,
+      ph: reading.ph, turbidity: reading.turbidity, temp: reading.temp,
+      dissolved_oxygen: reading.do, notes: reading.notes, photo_url: reading.photoUrl,
+      created_at: reading.createdAt,
+    }).select().single();
+    if (error) throw error;
+    const mapped = mapReadingRow(data);
+    state.readings.unshift(mapped);
+    markMine(mapped.id);
+    return mapped;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function timeAgo(iso) {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return "";
+    const mins = Math.floor((Date.now() - then) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + "m ago";
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + "h ago";
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return days + "d ago";
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  function phQ(v) {
+    if (v == null || Number.isNaN(v)) return { label: "No data", tone: "muted" };
+    if (v >= 6.5 && v <= 8.5) return { label: "Good", tone: "good" };
+    if (v >= 6 && v < 9) return { label: "Moderate", tone: "moderate" };
+    return { label: "Poor", tone: "poor" };
+  }
+  function turbQ(v) {
+    if (v == null || Number.isNaN(v)) return { label: "No data", tone: "muted" };
+    if (v <= 10) return { label: "Good", tone: "good" };
+    if (v <= 25) return { label: "Moderate", tone: "moderate" };
+    return { label: "Poor", tone: "poor" };
+  }
+  function doQ(v) {
+    if (v == null || Number.isNaN(v)) return { label: "No data", tone: "muted" };
+    if (v >= 6) return { label: "Good", tone: "good" };
+    if (v >= 4) return { label: "Moderate", tone: "moderate" };
+    return { label: "Poor", tone: "poor" };
+  }
+  function stationOverall(s) {
+    const tones = [phQ(s.ph).tone, turbQ(s.turbidity).tone, doQ(s.do).tone];
+    if (tones.includes("poor")) return { label: "Poor", tone: "poor" };
+    if (tones.includes("moderate")) return { label: "Moderate", tone: "moderate" };
+    return { label: "Good", tone: "good" };
+  }
+  function toast(msg) {
+    const host = document.getElementById("toasts");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = msg;
+    host.appendChild(el);
+    setTimeout(() => el.remove(), 2800);
+  }
+  function chip(id) {
+    const c = CAT[id] || CAT.other;
+    return `<span class="chip chip-${escapeHtml(c.id)}">${escapeHtml(c.label)}</span>`;
+  }
+  function badge(q) {
+    return `<span class="badge badge-${q.tone}">${escapeHtml(q.label)}</span>`;
+  }
+  function meter(label, value, unit, quality, min, max, goodMin, goodMax) {
+    const clamped = value == null ? null : Math.min(max, Math.max(min, value));
+    const pct = clamped == null ? null : ((clamped - min) / (max - min)) * 100;
+    const gLeft = ((goodMin - min) / (max - min)) * 100;
+    const gWidth = ((goodMax - goodMin) / (max - min)) * 100;
+    const color = quality.tone === "good" ? "var(--good)" : quality.tone === "moderate" ? "var(--moderate)" : quality.tone === "poor" ? "var(--poor)" : "var(--ink-subtle)";
+    return `<div class="param-row" style="flex-direction:column;align-items:stretch">
+      <div class="row" style="justify-content:space-between;width:100%">
+        <span>${escapeHtml(label)}</span>
+        <div class="row" style="gap:.5rem">
+          <strong class="tabular">${value == null ? "—" : value.toFixed(1) + (unit ? " " + unit : "")}</strong>
+          ${badge(quality)}
+        </div>
+      </div>
+      <div class="meter">
+        <div class="meter-good" style="left:${gLeft}%;width:${gWidth}%"></div>
+        ${pct == null ? "" : `<span class="meter-knob" style="left:${pct}%;background:${color}"></span>`}
+      </div>
+    </div>`;
+  }
+
+  let route = { name: "map", params: {} };
+  let mapInstance = null;
+  let mapMarkers = null;
+  let pickMap = null;
+
+  function parseHash() {
+    const h = (location.hash || "#map").slice(1);
+    const [name, ...rest] = h.split("/");
+    if (name === "report" && rest[0]) return { name: "report", params: { id: rest[0] } };
+    if (name === "station" && rest[0]) return { name: "station", params: { id: rest[0] } };
+    if (name === "article" && rest[0]) return { name: "article", params: { id: rest[0] } };
+    if (["map", "reports", "learn", "profile", "compose", "sensor"].includes(name)) return { name, params: {} };
+    return { name: "map", params: {} };
+  }
+  function navigate(name, params = {}) {
+    let hash = name;
+    if (name === "report") hash = "report/" + params.id;
+    if (name === "station") hash = "station/" + params.id;
+    if (name === "article") hash = "article/" + params.id;
+    if (location.hash.slice(1) === hash) { route = { name, params }; render(); return; }
+    location.hash = hash;
+  }
+  function setNavActive(name) {
+    const tabNames = { map: "map", reports: "reports", learn: "learn", profile: "profile", report: "reports", station: "map", article: "learn", compose: "reports", sensor: "profile" };
+    const active = tabNames[name] || "map";
+    document.querySelectorAll("#side-nav .nav-link, #tabbar a").forEach((el) => {
+      el.classList.toggle("active", el.getAttribute("data-route") === active);
+    });
+    const isTab = ["map", "reports", "learn", "profile"].includes(name);
+    const shell = document.getElementById("main-shell");
+    shell.classList.toggle("map-mode", name === "map");
+    shell.classList.toggle("tab-pad", isTab);
+    document.getElementById("tabbar").classList.toggle("hidden", !isTab);
+  }
+
+  function renderMap() {
+    const main = document.getElementById("main");
+    main.className = "map-page";
+    main.innerHTML = `
+      <div id="map" class="rw-map-full"></div>
+      <div class="map-overlay-top">
+        <div class="map-title-row">
+          <svg class="brand-mark" style="width:2.25rem;height:2.25rem;color:var(--primary-fg)" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M7 23c3.2 0 3.4-4.2 6.2-5.6 2.8-1.4 3.6-1.2 5.4-3.8C20.4 11 21.2 8 25 8" fill="none" stroke="#F4FBF9" stroke-width="2.2" stroke-linecap="round"/></svg>
+          <div><h1>River Watch</h1><p>Hillsborough River corridor</p></div>
+        </div>
+        <div class="station-chips" id="station-chips"></div>
+      </div>
+      <div class="map-overlay-bottom">
+        <div class="map-tools">
+          <div class="legend"><span class="row" style="gap:.35rem"><span class="pin-station"></span> Station</span><span class="row" style="gap:.35rem"><span class="pin-report"></span> Report</span></div>
+          <button type="button" class="btn btn-outline btn-icon" id="btn-locate" aria-label="Locate">◎</button>
+        </div>
+        <button type="button" class="btn btn-accent btn-lg btn-block" id="btn-report-fab" style="max-width:20rem;margin-left:auto">Report a problem</button>
+      </div>`;
+    document.getElementById("station-chips").innerHTML = STATIONS.map((s) => {
+      const q = stationOverall(s);
+      return `<button type="button" class="station-chip" data-station="${s.id}"><span class="dot dot-${q.tone}"></span><span>${escapeHtml(s.name)}</span></button>`;
+    }).join("");
+    document.querySelectorAll("[data-station]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const s = STATION[btn.getAttribute("data-station")];
+        if (mapInstance && s) mapInstance.flyTo([s.lat, s.lng], 14, { duration: 0.55 });
+      });
+    });
+    document.getElementById("btn-report-fab").onclick = () => navigate("compose");
+    document.getElementById("btn-locate").onclick = () => {
+      if (!navigator.geolocation) { toast("Location unavailable"); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { if (mapInstance) mapInstance.flyTo([pos.coords.latitude, pos.coords.longitude], 14); },
+        () => toast("Could not read location"),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    };
+    requestAnimationFrame(initMainMap);
+  }
+
+  function initMainMap() {
+    if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+    const el = document.getElementById("map");
+    if (!el || !window.L) return;
+    mapInstance = L.map(el, { zoomControl: false }).setView(MAP_CENTER, 12);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: "© OSM · CARTO", subdomains: "abcd", maxZoom: 19,
+    }).addTo(mapInstance);
+    L.control.zoom({ position: "topright" }).addTo(mapInstance);
+    mapMarkers = L.layerGroup().addTo(mapInstance);
+    STATIONS.forEach((s) => {
+      const m = L.marker([s.lat, s.lng], {
+        icon: L.divIcon({ className: "rw-pin", html: '<span class="rw-pin-station"></span>', iconSize: [18, 18], iconAnchor: [9, 16] }),
+        title: s.name, zIndexOffset: 200,
+      });
+      m.on("click", () => navigate("station", { id: s.id }));
+      m.addTo(mapMarkers);
+    });
+    state.reports.forEach((r) => {
+      const cat = CAT[r.category] || CAT.other;
+      const m = L.marker([r.lat, r.lng], {
+        icon: L.divIcon({ className: "rw-pin", html: `<span class="rw-pin-dot" style="background:${cat.pin}"></span>`, iconSize: [16, 16], iconAnchor: [8, 8] }),
+        title: r.title,
+      });
+      m.on("click", () => navigate("report", { id: r.id }));
+      m.addTo(mapMarkers);
+    });
+    setTimeout(() => mapInstance.invalidateSize(), 80);
+  }
+
+  function renderReports() {
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    let filter = "all";
+    let statusLabel = "Demo mode — paste Supabase URL + anon key in the HTML";
+    let statusClass = "warn";
+    if (state.connection === "live") {
+      statusLabel = "Synced with Supabase";
+      statusClass = "";
+    } else if (state.connection === "error") {
+      statusLabel = "Supabase error — " + (state.errorDetail || "sample data");
+      statusClass = "err";
+    } else if (state.errorDetail) {
+      statusLabel = state.errorDetail;
+      statusClass = "warn";
+    }
+    main.innerHTML = `
+      <header class="page-header"><div class="grow"><h1>Community reports</h1><p class="sub">What neighbors are seeing on the river</p></div></header>
+      <div class="status-bar"><span class="status-dot ${statusClass}"></span>${escapeHtml(statusLabel)}</div>
+      <div class="filters" id="filters">
+        <button type="button" class="filter-btn active" data-f="all">All</button>
+        ${CATEGORIES.map((c) => `<button type="button" class="filter-btn" data-f="${c.id}">${escapeHtml(c.label)}</button>`).join("")}
+      </div>
+      <div class="content" id="report-list" style="padding-top:0"></div>
+      <button type="button" class="fab" id="fab-add" aria-label="Add">+</button>`;
+    function paintList() {
+      const list = document.getElementById("report-list");
+      const items = state.reports.filter((r) => filter === "all" || r.category === filter)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      if (!items.length) { list.innerHTML = `<div class="empty">No reports in this category yet.</div>`; return; }
+      list.innerHTML = `<div class="stack">${items.map((r) => `
+        <a href="#report/${escapeHtml(r.id)}" class="report-card" data-id="${escapeHtml(r.id)}">
+          <div class="report-thumb placeholder">◆</div>
+          <div class="grow">
+            <p class="truncate" style="font-weight:600;font-size:.875rem">${escapeHtml(r.title)}</p>
+            <div class="row" style="margin-top:.35rem;gap:.5rem">${chip(r.category)}<span class="subtle" style="font-size:.75rem">${escapeHtml(timeAgo(r.createdAt))}</span></div>
+          </div>
+          <div class="upvote-col"><span>▲</span><span class="tabular">${r.upvotes}</span></div>
+        </a>`).join("")}</div>`;
+      list.querySelectorAll(".report-card").forEach((a) => {
+        a.addEventListener("click", (e) => { e.preventDefault(); navigate("report", { id: a.getAttribute("data-id") }); });
+      });
+    }
+    document.querySelectorAll("#filters .filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filter = btn.getAttribute("data-f");
+        document.querySelectorAll("#filters .filter-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        paintList();
+      });
+    });
+    document.getElementById("fab-add").onclick = () => navigate("compose");
+    paintList();
+  }
+
+  function renderReportDetail(id) {
+    const r = state.reports.find((x) => x.id === id);
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    if (!r) {
+      main.innerHTML = `<header class="page-header"><button type="button" class="icon-btn" id="btn-back">←</button><h1>Report</h1></header><div class="content"><p class="muted">Not found.</p></div>`;
+      document.getElementById("btn-back").onclick = () => navigate("reports");
+      return;
+    }
+    const upvoted = state.upvotedIds.includes(r.id);
+    main.innerHTML = `
+      <header class="page-header">
+        <button type="button" class="icon-btn" id="btn-back">←</button>
+        <h1 class="grow">Report</h1>
+        <button type="button" class="icon-btn" id="btn-share">↗</button>
+      </header>
+      <div class="content stack-lg">
+        <div class="hero-placeholder">◆</div>
+        <div class="card stack">
+          <div class="row" style="justify-content:space-between">${chip(r.category)}<span class="subtle" style="font-size:.75rem;text-transform:capitalize">${escapeHtml(r.status)}</span></div>
+          <h2 style="font-size:1.5rem;font-weight:600">${escapeHtml(r.title)}</h2>
+          ${r.description ? `<p class="muted" style="font-size:.9rem;line-height:1.55">${escapeHtml(r.description)}</p>` : ""}
+          <p class="subtle" style="font-size:.75rem">${escapeHtml(timeAgo(r.createdAt))} · ${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</p>
+          <div class="row" style="flex-wrap:wrap;gap:.5rem">
+            <button type="button" class="btn btn-outline grow" id="btn-upvote" ${upvoted ? "disabled" : ""}>${upvoted ? "Upvoted" : "Upvote"} (${r.upvotes})</button>
+            <button type="button" class="btn btn-mute grow" id="btn-on-map">Show on map</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById("btn-back").onclick = () => navigate("reports");
+    document.getElementById("btn-upvote").onclick = async () => {
+      try { await upvoteReport(r.id); toast("Thanks for the upvote"); renderReportDetail(id); }
+      catch (e) { console.error(e); toast("Could not save upvote"); }
+    };
+    document.getElementById("btn-on-map").onclick = () => {
+      navigate("map");
+      setTimeout(() => { if (mapInstance) mapInstance.flyTo([r.lat, r.lng], 15); }, 120);
+    };
+    document.getElementById("btn-share").onclick = async () => {
+      const msg = `River Watch: ${r.title} at ${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}`;
+      try {
+        if (navigator.share) await navigator.share({ title: r.title, text: msg });
+        else { await navigator.clipboard.writeText(msg); toast("Copied"); }
+      } catch (_) {}
+    };
+  }
+
+  function renderStation(id) {
+    const s = STATION[id] || STATIONS[0];
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    main.innerHTML = `
+      <header class="page-header"><button type="button" class="icon-btn" id="btn-back">←</button><h1 class="grow">${escapeHtml(s.name)}</h1></header>
+      <div class="content stack-lg">
+        <div class="card">
+          <p class="subtle" style="font-size:.75rem;margin-bottom:.75rem">${escapeHtml(s.source)} · Updated ${escapeHtml(s.updated)}</p>
+          ${meter("pH", s.ph, "", phQ(s.ph), 5, 10, 6.5, 8.5)}
+          ${meter("Turbidity", s.turbidity, "NTU", turbQ(s.turbidity), 0, 40, 0, 10)}
+          <div class="param-row"><span>Temperature</span><strong class="tabular">${s.temp.toFixed(1)} °C</strong></div>
+          ${meter("Dissolved oxygen", s.do, "mg/L", doQ(s.do), 0, 12, 6, 12)}
+        </div>
+        <button type="button" class="btn btn-outline btn-block" id="btn-on-map">Show on map</button>
+      </div>`;
+    document.getElementById("btn-back").onclick = () => navigate("map");
+    document.getElementById("btn-on-map").onclick = () => {
+      navigate("map");
+      setTimeout(() => { if (mapInstance) mapInstance.flyTo([s.lat, s.lng], 15); }, 120);
+    };
+  }
+
+  function renderLearn() {
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    main.innerHTML = `
+      <header class="page-header"><div class="grow"><h1>Learn</h1><p class="sub">How to read the river</p></div></header>
+      <div class="content stack">
+        ${ARTICLES.map((a) => `
+          <a href="#article/${a.id}" class="article-card" data-id="${a.id}">
+            <div class="article-icon">📖</div>
+            <div class="grow">
+              <p style="font-weight:600;font-size:.875rem">${escapeHtml(a.title)}</p>
+              <p class="subtle" style="font-size:.75rem;margin-top:.15rem">${escapeHtml(a.category)}</p>
+            </div>
+          </a>`).join("")}
+      </div>`;
+    main.querySelectorAll(".article-card").forEach((a) => {
+      a.addEventListener("click", (e) => { e.preventDefault(); navigate("article", { id: a.getAttribute("data-id") }); });
+    });
+  }
+
+  function renderArticle(id) {
+    const a = ARTICLES.find((x) => x.id === id) || ARTICLES[0];
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    const body = a.blocks.map((b) => {
+      if (b.t === "h") return `<h3>${escapeHtml(b.text)}</h3>`;
+      if (b.t === "p") return `<p>${escapeHtml(b.text)}</p>`;
+      if (b.t === "ul") return `<ul>${b.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
+      if (b.t === "callout") return `<aside class="callout">${escapeHtml(b.text)}</aside>`;
+      return "";
+    }).join("");
+    main.innerHTML = `
+      <header class="page-header"><button type="button" class="icon-btn" id="btn-back">←</button><h1 class="grow">Article</h1></header>
+      <article class="content">
+        <p style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--primary)">${escapeHtml(a.category)}</p>
+        <h2 style="font-size:1.5rem;font-weight:600;margin-top:.25rem">${escapeHtml(a.title)}</h2>
+        <p class="muted" style="margin-top:.5rem;font-size:.9rem">${escapeHtml(a.dek)}</p>
+        <div class="article-body" style="margin-top:1.25rem">${body}</div>
+      </article>`;
+    document.getElementById("btn-back").onclick = () => navigate("learn");
+  }
+
+  function renderProfile() {
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    const mine = new Set(getMineIds());
+    const myReports = state.reports.filter((r) => mine.has(r.id));
+    const myReadings = state.readings.filter((r) => mine.has(r.id));
+    const combined = [
+      ...myReports.map((r) => ({ type: "report", id: r.id, title: r.title, createdAt: r.createdAt, category: r.category })),
+      ...myReadings.map((r) => ({ type: "sensor", id: r.id, title: r.stationName, createdAt: r.createdAt, category: null })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    main.innerHTML = `
+      <header class="page-header"><div class="grow"><h1>Your contributions</h1><p class="sub">From this device</p></div></header>
+      <div class="content stack-lg">
+        <div class="stats">
+          <div class="stat"><strong class="tabular">${myReports.length}</strong><span>Reports</span></div>
+          <div class="stat"><strong class="tabular">${myReadings.length}</strong><span>Sensor readings</span></div>
+        </div>
+        <button type="button" class="btn btn-accent btn-block" id="btn-sensor">Log sensor data</button>
+        <div class="stack">
+          ${combined.length === 0 ? `<p class="empty">Nothing logged yet from this device.</p>` :
+            combined.map((item) => `
+              <div class="contrib" data-type="${item.type}" data-id="${escapeHtml(item.id)}" style="${item.type === "report" ? "cursor:pointer" : ""}">
+                <div class="grow">
+                  <p style="font-weight:600;font-size:.875rem" class="truncate">${escapeHtml(item.title)}</p>
+                  <p class="subtle" style="font-size:.75rem">${item.type === "sensor" ? "Sensor · " : ""}${escapeHtml(timeAgo(item.createdAt))}</p>
+                </div>
+                ${item.category ? chip(item.category) : ""}
+              </div>`).join("")}
+        </div>
+      </div>`;
+    document.getElementById("btn-sensor").onclick = () => navigate("sensor");
+    main.querySelectorAll('.contrib[data-type="report"]').forEach((el) => {
+      el.addEventListener("click", () => navigate("report", { id: el.getAttribute("data-id") }));
+    });
+  }
+
+  function renderCompose() {
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    let category = "trash";
+    let coords = null;
+    let photoData = null;
+    main.innerHTML = `
+      <header class="page-header"><button type="button" class="icon-btn" id="btn-back">←</button><h1 class="grow">Report a problem</h1></header>
+      <div class="content stack-lg">
+        <div class="hero-placeholder" id="photo-preview">📷</div>
+        <div class="row" style="flex-wrap:wrap">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-camera">Take photo</button>
+          <button type="button" class="btn btn-accent btn-sm" id="btn-gallery">Gallery</button>
+          <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden" />
+          <input type="file" id="file-gallery" accept="image/*" class="hidden" />
+        </div>
+        <div><label for="title">Title</label><input id="title" placeholder="e.g. Trash near the boat ramp" /></div>
+        <div>
+          <label>Category</label>
+          <div class="category-grid" id="cat-grid">
+            ${CATEGORIES.map((c) => `<button type="button" class="cat-select ${c.id === "trash" ? "active" : ""}" data-cat="${c.id}" style="${c.id === "trash" ? "background:" + c.pin + ";color:var(--on-cat)" : ""}">${escapeHtml(c.label)}</button>`).join("")}
+          </div>
+        </div>
+        <div><label for="notes">Notes (optional)</label><textarea id="notes" placeholder="Additional details…"></textarea></div>
+        <div>
+          <label>Location</label>
+          <p class="subtle" style="font-size:.75rem;margin-bottom:.5rem">Tap the map, use your location, or pick a station.</p>
+          <div class="mini-map" id="pick-map"></div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-locate">Use my location</button>
+          <div class="row" style="flex-wrap:wrap;margin-top:.75rem;gap:.4rem" id="presets">
+            ${STATIONS.map((s) => `<button type="button" class="btn btn-outline btn-chip" data-lat="${s.lat}" data-lng="${s.lng}">${escapeHtml(s.name)}</button>`).join("")}
+          </div>
+          <p class="subtle tabular" style="font-size:.75rem;margin-top:.5rem" id="coords-label"></p>
+        </div>
+        <button type="button" class="btn btn-accent btn-lg btn-block" id="btn-submit">Submit report</button>
+      </div>`;
+    document.getElementById("btn-back").onclick = () => navigate("map");
+    document.querySelectorAll("#cat-grid .cat-select").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        category = btn.getAttribute("data-cat");
+        document.querySelectorAll("#cat-grid .cat-select").forEach((b) => {
+          const id = b.getAttribute("data-cat");
+          const active = id === category;
+          b.classList.toggle("active", active);
+          b.style.background = active ? CAT[id].pin : "";
+          b.style.color = active ? "var(--on-cat)" : "";
+        });
+      });
+    });
+    function setPhoto(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        photoData = reader.result;
+        const prev = document.getElementById("photo-preview");
+        prev.innerHTML = `<img class="hero-img" src="${photoData}" alt="" />`;
+        prev.className = "";
+      };
+      reader.readAsDataURL(file);
+    }
+    document.getElementById("btn-camera").onclick = () => document.getElementById("file-camera").click();
+    document.getElementById("btn-gallery").onclick = () => document.getElementById("file-gallery").click();
+    document.getElementById("file-camera").onchange = (e) => setPhoto(e.target.files[0]);
+    document.getElementById("file-gallery").onchange = (e) => setPhoto(e.target.files[0]);
+    function setCoords(lat, lng) {
+      coords = { lat, lng };
+      document.getElementById("coords-label").textContent = lat.toFixed(5) + ", " + lng.toFixed(5);
+      if (pickMap && window.L) {
+        if (pickMap._pickMarker) pickMap.removeLayer(pickMap._pickMarker);
+        pickMap._pickMarker = L.marker([lat, lng], {
+          icon: L.divIcon({ className: "rw-pin", html: '<span class="rw-pin-dot" style="background:#0E7490;width:18px;height:18px"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+        }).addTo(pickMap);
+        pickMap.panTo([lat, lng]);
+      }
+    }
+    document.getElementById("btn-locate").onclick = () => {
+      if (!navigator.geolocation) { toast("Location unavailable"); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords(pos.coords.latitude, pos.coords.longitude),
+        () => toast("Could not read location"),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    };
+    document.querySelectorAll("#presets button").forEach((btn) => {
+      btn.addEventListener("click", () => setCoords(+btn.getAttribute("data-lat"), +btn.getAttribute("data-lng")));
+    });
+    requestAnimationFrame(() => {
+      const el = document.getElementById("pick-map");
+      if (!el || !window.L) return;
+      if (pickMap) { pickMap.remove(); pickMap = null; }
+      pickMap = L.map(el, { zoomControl: false }).setView(MAP_CENTER, 12);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { attribution: "© OSM · CARTO", maxZoom: 19 }).addTo(pickMap);
+      pickMap.on("click", (e) => setCoords(e.latlng.lat, e.latlng.lng));
+      setTimeout(() => pickMap.invalidateSize(), 100);
+    });
+    document.getElementById("btn-submit").onclick = async () => {
+      const title = document.getElementById("title").value.trim();
+      const notes = document.getElementById("notes").value.trim();
+      if (!title) { toast("Add a short title"); return; }
+      if (!coords) { toast("Set a location"); return; }
+      const btn = document.getElementById("btn-submit");
+      btn.disabled = true;
+      try {
+        const report = {
+          id: "r_" + Date.now().toString(36), title, description: notes, category,
+          lat: coords.lat, lng: coords.lng, photoUrl: photoData, status: "pending",
+          upvotes: 0, createdAt: new Date().toISOString(),
+        };
+        const saved = await insertReport(report);
+        toast(sb ? "Report saved to Supabase" : "Report saved on this device");
+        navigate("report", { id: saved.id });
+      } catch (e) {
+        console.error(e);
+        toast("Could not save report");
+        btn.disabled = false;
+      }
+    };
+  }
+
+  function renderSensor() {
+    const main = document.getElementById("main");
+    main.className = ""; main.style.display = "block"; main.style.overflow = "auto";
+    let coords = null;
+    main.innerHTML = `
+      <header class="page-header"><button type="button" class="icon-btn" id="btn-back">←</button><h1 class="grow">Log sensor data</h1></header>
+      <div class="content stack-lg">
+        <div><label for="site">Site name</label><input id="site" placeholder="e.g. Riverside Park dock" /></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <div><label for="ph">pH</label><input id="ph" inputmode="decimal" placeholder="7.0" /></div>
+          <div><label for="turb">Turbidity (NTU)</label><input id="turb" inputmode="decimal" placeholder="10" /></div>
+          <div><label for="temp">Temperature (°C)</label><input id="temp" inputmode="decimal" placeholder="25" /></div>
+          <div><label for="do">Dissolved O₂ (mg/L)</label><input id="do" inputmode="decimal" placeholder="6.5" /></div>
+        </div>
+        <div><label for="snotes">Site notes</label><textarea id="snotes" placeholder="Weather, observations…"></textarea></div>
+        <div>
+          <label>Location</label>
+          <div class="mini-map" id="pick-map"></div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-locate">Use my location</button>
+          <div class="row" style="flex-wrap:wrap;margin-top:.75rem;gap:.4rem" id="presets">
+            ${STATIONS.map((s) => `<button type="button" class="btn btn-outline btn-chip" data-lat="${s.lat}" data-lng="${s.lng}" data-name="${escapeHtml(s.name)}">${escapeHtml(s.name)}</button>`).join("")}
+          </div>
+          <p class="subtle tabular" style="font-size:.75rem;margin-top:.5rem" id="coords-label"></p>
+        </div>
+        <button type="button" class="btn btn-accent btn-lg btn-block" id="btn-submit">Submit reading</button>
+      </div>`;
+    document.getElementById("btn-back").onclick = () => navigate("profile");
+    function setCoords(lat, lng) {
+      coords = { lat, lng };
+      document.getElementById("coords-label").textContent = lat.toFixed(5) + ", " + lng.toFixed(5);
+      if (pickMap && window.L) {
+        if (pickMap._pickMarker) pickMap.removeLayer(pickMap._pickMarker);
+        pickMap._pickMarker = L.marker([lat, lng], {
+          icon: L.divIcon({ className: "rw-pin", html: '<span class="rw-pin-dot" style="background:#0E7490;width:18px;height:18px"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+        }).addTo(pickMap);
+      }
+    }
+    document.getElementById("btn-locate").onclick = () => {
+      if (!navigator.geolocation) { toast("Location unavailable"); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords(pos.coords.latitude, pos.coords.longitude),
+        () => toast("Could not read location"),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    };
+    document.querySelectorAll("#presets button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setCoords(+btn.getAttribute("data-lat"), +btn.getAttribute("data-lng"));
+        const site = document.getElementById("site");
+        if (!site.value.trim()) site.value = btn.getAttribute("data-name") || "";
+      });
+    });
+    requestAnimationFrame(() => {
+      const el = document.getElementById("pick-map");
+      if (!el || !window.L) return;
+      if (pickMap) { pickMap.remove(); pickMap = null; }
+      pickMap = L.map(el, { zoomControl: false }).setView(MAP_CENTER, 12);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { attribution: "© OSM · CARTO", maxZoom: 19 }).addTo(pickMap);
+      pickMap.on("click", (e) => setCoords(e.latlng.lat, e.latlng.lng));
+      setTimeout(() => pickMap.invalidateSize(), 100);
+    });
+    document.getElementById("btn-submit").onclick = async () => {
+      const stationName = document.getElementById("site").value.trim();
+      if (!stationName) { toast("Name the site"); return; }
+      if (!coords) { toast("Set a location"); return; }
+      const num = (id) => {
+        const v = document.getElementById(id).value.trim();
+        if (!v) return null;
+        const n = parseFloat(v);
+        return Number.isNaN(n) ? null : n;
+      };
+      const btn = document.getElementById("btn-submit");
+      btn.disabled = true;
+      try {
+        await insertReading({
+          id: "s_" + Date.now().toString(36), stationName, lat: coords.lat, lng: coords.lng,
+          ph: num("ph"), turbidity: num("turb"), temp: num("temp"), do: num("do"),
+          notes: document.getElementById("snotes").value.trim(), photoUrl: null,
+          createdAt: new Date().toISOString(),
+        });
+        toast(sb ? "Reading saved to Supabase" : "Reading saved on this device");
+        navigate("profile");
+      } catch (e) {
+        console.error(e);
+        toast("Could not save reading");
+        btn.disabled = false;
+      }
+    };
+  }
+
+  function render() {
+    route = parseHash();
+    setNavActive(route.name);
+    switch (route.name) {
+      case "map": renderMap(); break;
+      case "reports": renderReports(); break;
+      case "report": renderReportDetail(route.params.id); break;
+      case "station": renderStation(route.params.id); break;
+      case "learn": renderLearn(); break;
+      case "article": renderArticle(route.params.id); break;
+      case "profile": renderProfile(); break;
+      case "compose": renderCompose(); break;
+      case "sensor": renderSensor(); break;
+      default: renderMap();
+    }
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelectorAll("[data-route]").forEach((el) => {
+    el.addEventListener("click", (e) => { e.preventDefault(); navigate(el.getAttribute("data-route")); });
+  });
+  window.addEventListener("hashchange", render);
+
+  (async function boot() {
+    document.getElementById("main").innerHTML = `<div class="loading">Loading River Watch…</div>`;
+    await loadFromSupabase();
+    if (!location.hash) location.hash = "map";
+    else render();
+  })();
+})();
+  </script>
+</body>
+</html>
